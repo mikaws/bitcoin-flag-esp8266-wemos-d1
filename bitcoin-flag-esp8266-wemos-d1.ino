@@ -1,31 +1,31 @@
 // ----------------------------
-// Bibliotecas Padrões
+// Default Libraries
 // ----------------------------
 
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 
 // ----------------------------
-// Bibliotecas adicionais - cada uma dessa deve ser instalada.
+// Additional libraries - each of these must be installed.
 // ----------------------------
 
 #include <ArduinoJson.h>
-// Biblioteca usada para analisar Json das respostas da API
-// Procure por "Arduino Json" no gerenciador de biblioteca do Arduino
+// Library used to parse Json from API responses
+// Search for "Arduino Json" in Arduino's library manager
 
-//------- Substitua os campos! ------
-char ssid[] = "YOUR_SSID";       // seu nome da rede (SSID)
-char password[] = "YOUR_PASSWORD";  // sua senha de rede
+//------- Replace the fields! ------
+char ssid[] = "YOUR_SSID";       // your ssid name (SSID)
+char password[] = "YOUR_PASSWORD";  // your password
 
-// Para requisicoes HTTPS
+// For HTTPS requests
 WiFiClientSecure client;
 
-// Apenas a base do URL ao qual você deseja se conectar
+// Just the base of the URL you want to connect to
 #define TEST_HOST "api.coingecko.com"
 
-// OPCIONAL - A impressao digital(fingerprint) do site
+// OPTIONAL - The fingerprint of the website
 #define TEST_HOST_FINGERPRINT "YOUR_FINGERPRINT_OF_API"
-// A impressao digital muda a cada poucos meses.
+// The fingerprint changes every few months.
 
 int ledPin = LED_BUILTIN;
 
@@ -33,18 +33,18 @@ void setup() {
 
   Serial.begin(9600);
 
-  // Conecta o WiFI
+  // Connect WiFi
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
 
-  // Define ledpin com saida e o deixa desligado
+  // Set ledpin with output and leave it off
   pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH); //inverso para ESP
+  digitalWrite(ledPin, HIGH); //inverse to ESP
 
-  // Tente se conectar a rede Wifi:
+  // Try to connect to Wifi network:
   delay(500);
-  Serial.print("Conectando ao Wifi: ");
+  Serial.print("Connecting to Wifi: ");
   Serial.println(ssid);
   
   WiFi.begin(ssid, password);
@@ -53,36 +53,36 @@ void setup() {
     delay(500);
   }
   Serial.println("");
-  Serial.println("WiFi conectado");
-  Serial.println("Servidor operando em:");
+  Serial.println("WiFi connected");
+  Serial.println("Server running in:");
   IPAddress ip = WiFi.localIP();
   Serial.println(ip);
 
   //--------
 
-  // Checa a impressao digital
+  // Check the fingerprint
   client.setFingerprint(TEST_HOST_FINGERPRINT);
 }
 
 void makeHTTPRequest() {
   
-  // Abrindo conexao com o servidor
+  // Opening server connection
   if (!client.connect(TEST_HOST, 443))
   {
     Serial.println(F("Connection failed"));
     return;
   }
 
-  // executa funcoes utilitarias em segundo plano para o ESP
+  // Run utility functions in the background for ESP
   yield();
 
-  // Envia requisicao HTTP
+  // Send GET request
   client.print(F("GET "));
-  // Esta é a segunda metade da requisicao (tudo o que vem depois do URL base)
+  // This is the second part of the request (everything after the base URL)
   client.print("/api/v3/simple/price?ids=bitcoin&vs_currencies=usd%2Cbrl");
   client.println(F(" HTTP/1.1"));
 
-  //Cabecalhos (Headers)
+  //Headers
   client.print(F("Host: "));
   client.println(TEST_HOST);
 
@@ -94,7 +94,7 @@ void makeHTTPRequest() {
     return;
   }
 
-  // Checa status HTTP
+  // Check HTTP status
   char status[32] = {0};
   client.readBytesUntil('\r', status, sizeof(status));
   if (strcmp(status, "HTTP/1.1 200 OK") != 0)
@@ -104,7 +104,7 @@ void makeHTTPRequest() {
     return;
   }
 
-  // Pula cabecalhos(headers) HTTP
+  // Skip HTTP headers
   char endOfHeaders[] = "\r\n\r\n";
   if (!client.find(endOfHeaders))
   {
@@ -112,19 +112,19 @@ void makeHTTPRequest() {
     return;
   }
 
-  // Isso provavelmente nao e necessario para a maioria, mas em algumas
-  // API's ha caracteres voltando antes do corpo da resposta.
-  // O peek () irá olhar para o caractere, mas nao o tirara da fila
+  // This is probably not necessary for most, but some
+  // API's have characters going back before the response body.
+  // peek() will look at the character, but not take it out of the queue
   while (client.available() && client.peek() != '{')
   {
     char c = 0;
     client.readBytes(&c, 1);
   }
 
-  // Use o ArduinoJson Assistant para calcular o tamanho do JSON e nao estourar os bufferes:
+  // Use the ArduinoJson Assistant to calculate the JSON size and not overflow the buffers:
   //https://arduinojson.org/v6/assistant/
   
-  DynamicJsonDocument doc(192); //Para ESP32/ESP8266 voce usara dinamico
+  DynamicJsonDocument doc(192); //For ESP32/ESP8266 you will use dynamic
 
   DeserializationError error = deserializeJson(doc, client);
 
@@ -136,22 +136,22 @@ void makeHTTPRequest() {
     Serial.print("-------------");
     Serial.println((String)"\n\n");
      
-    if (bitcoin_brl < THE VALUE YOU WANT TO CHECK) { // Preço do dia configurado para verificacao
-      Serial.print("O Bitcoin abaixou para:  ");
+    if (bitcoin_brl < THE VALUE YOU WANT TO CHECK) { // Price of the day configured for verification
+      Serial.print("Bitcoin lowered to: ");
       Serial.println((String)bitcoin_brl + ",00 reais\n");
       
-      digitalWrite(ledPin, LOW); // Ascende led se valor for menor
+      digitalWrite(ledPin, LOW); // Turns up led if value is lower
     }
 
-    else if (bitcoin_brl > THE VALUE YOU WANT TO CHECK){ // Preço do dia configurado para verificacao
-      Serial.print("O Bitcoin aumentou para:  ");
+    else if (bitcoin_brl > THE VALUE YOU WANT TO CHECK){ // Price of the day configured for verification
+      Serial.print("Bitcoin increased to:  ");
       Serial.println((String)bitcoin_brl + ",00 reais\n");
       
-      digitalWrite(ledPin, LOW); // Ascende led se valor for maior
+      digitalWrite(ledPin, LOW); // Turns up led if value is higher
     }
 
     else{
-      digitalWrite(ledPin, HIGH); // Desliga led se valor for entre os dois
+      digitalWrite(ledPin, HIGH); // Turn off led if value is between the two
     }
 
     Serial.print("bitcoin_usd: ");
